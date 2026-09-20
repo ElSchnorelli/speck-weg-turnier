@@ -8,6 +8,7 @@ import {
   isCurrentRoundComplete,
   completeRoundAndAdvance,
   addExtraMatch,
+  swapFillParticipant,
 } from '../vorrunde.js';
 import { computeStandings } from '../ranking.js';
 import { renderRankingTable } from './rankingView.js';
@@ -28,6 +29,32 @@ function feldHtml(match) {
   return `<button class="start-field-btn" data-match="${match.id}">Spiel starten</button>`;
 }
 
+function fillSwapHtml(match, participantById) {
+  if (!match.isFillMatch || match.status === 'abgeschlossen') return '';
+  if (!match.fillParticipantIds || match.fillParticipantIds.length === 0) return '';
+
+  const inMatchIds = new Set([...match.teamA, ...match.teamB]);
+  const activeParticipants = [...participantById.values()].filter((p) => p.active);
+
+  const rows = match.fillParticipantIds
+    .map((currentId) => {
+      const options = activeParticipants
+        .filter((p) => p.id === currentId || !inMatchIds.has(p.id))
+        .map((p) => `<option value="${p.id}" ${p.id === currentId ? 'selected' : ''}>${p.name} (${p.id})</option>`)
+        .join('');
+      return `
+        <label>
+          Freiwillige/r statt ${participantById.get(currentId)?.name || `#${currentId}`}:
+          <select class="fill-swap-select" data-match="${match.id}" data-old="${currentId}">${options}</select>
+        </label>
+        <button class="fill-swap-btn" data-match="${match.id}" data-old="${currentId}" type="button">Ändern</button>
+      `;
+    })
+    .join('');
+
+  return `<form class="inline-form fill-swap">${rows}</form>`;
+}
+
 function matchCardHtml(match, participantById) {
   const setInput = (setIndex, side, value) =>
     `<input type="number" min="0" class="set-input" data-match="${match.id}" data-set="${setIndex}" data-side="${side}" value="${value ?? ''}" />`;
@@ -44,6 +71,7 @@ function matchCardHtml(match, participantById) {
         <span>vs.</span>
         <strong>${teamLabel(match.teamB, participantById)}</strong>
       </div>
+      ${fillSwapHtml(match, participantById)}
       <div class="match-sets">
         <label>Satz 1: ${setInput(0, 'a', match.sets[0].a)} : ${setInput(0, 'b', match.sets[0].b)}</label>
         <label>Satz 2: ${setInput(1, 'a', match.sets[1].a)} : ${setInput(1, 'b', match.sets[1].b)}</label>
@@ -202,6 +230,22 @@ export async function renderVorrundeView(container) {
         alert(error.message);
       }
       renderVorrundeView(container);
+    });
+  });
+
+  container.querySelectorAll('.fill-swap-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const matchId = Number(btn.dataset.match);
+      const oldId = Number(btn.dataset.old);
+      const select = container.querySelector(`.fill-swap-select[data-match="${matchId}"][data-old="${oldId}"]`);
+      const newId = Number(select.value);
+      if (newId === oldId) return;
+      try {
+        await swapFillParticipant(matchId, oldId, newId);
+        renderVorrundeView(container);
+      } catch (error) {
+        alert(error.message);
+      }
     });
   });
 

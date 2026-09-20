@@ -113,6 +113,27 @@ export async function addExtraMatch(teamA, teamB) {
   return match;
 }
 
+// Tauscht bei einem Auffüllspiel eine der geliehenen Personen manuell
+// gegen eine andere aus (z.B. wenn sich eine bestimmte Person lieber
+// freiwillig melden soll als die automatisch ausgeloste).
+export async function swapFillParticipant(matchId, oldId, newId) {
+  const match = await dbGet('matches', matchId);
+  if (!match) throw new Error('Spiel nicht gefunden.');
+  if (!match.isFillMatch) throw new Error('Nur bei Auffüllspielen möglich.');
+  if (match.status === 'abgeschlossen') throw new Error('Nach Erfassung des Ergebnisses nicht mehr änderbar.');
+
+  const allIds = [...match.teamA, ...match.teamB];
+  if (!allIds.includes(oldId)) throw new Error('Person ist nicht Teil dieses Spiels.');
+  if (allIds.includes(newId)) throw new Error('Diese Person spielt in diesem Spiel bereits.');
+
+  match.teamA = match.teamA.map((id) => (id === oldId ? newId : id));
+  match.teamB = match.teamB.map((id) => (id === oldId ? newId : id));
+  match.fillParticipantIds = match.fillParticipantIds.map((id) => (id === oldId ? newId : id));
+
+  await dbPut('matches', match);
+  return match;
+}
+
 export async function completeRoundAndAdvance(settings) {
   const status = await getStatus();
   const nextRound = status.aktuelleRunde + 1;
