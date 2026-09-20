@@ -301,8 +301,8 @@
         Nach jeder abgeschlossenen Runde wird für die nächste Runde neu ausgelost.
       </p>
       <p>
-        Reicht die Teilnehmerzahl nicht für ein vollständiges letztes Spiel, wird dieses automatisch mit
-        bereits spielenden Personen aufgefüllt (siehe <a href="#auffuellspiele">Auffüllspiele</a>).
+        Reicht die Teilnehmerzahl nicht für ein vollständiges letztes Spiel, entsteht automatisch ein
+        <strong>Auffüllspiel</strong> statt dass jemand pausieren muss (siehe <a href="#auffuellspiele">Auffüllspiele</a>).
       </p>
 
       <h3>Spielnummer &amp; Feld</h3>
@@ -316,6 +316,8 @@
         Sind alle Felder belegt, ist der Button ausgegraut. Sobald das Ergebnis gespeichert wird, gilt das
         Spiel als abgeschlossen und die Feld-Anzeige verschwindet automatisch – das Feld ist dann sofort für
         das nächste Spiel wieder frei. So sieht man auf einen Blick, welche Felder gerade aktiv bespielt werden.
+        Bei einem Auffüllspiel erscheint <span class="badge">Spiel starten</span> erst, sobald alle offenen
+        Auffüller-Plätze besetzt sind (siehe unten).
       </p>
 
       <h3>Ergebnis eintragen</h3>
@@ -331,17 +333,39 @@
     </section>
 
     <section id="auffuellspiele">
-      <h2>Auffüllspiele für pausierende Spieler</h2>
+      <h2>Auffüllspiele statt Pausieren</h2>
       <p>
         Reicht die Teilnehmerzahl (z.B. wegen ungerader Damen-/Herren-Verteilung) nicht für volle Teams,
-        müssen manche Spieler eine Runde pausieren. Diese werden in der Vorrunden-Ansicht im Bereich
-        <strong>„Pausierende Spieler"</strong> namentlich aufgelistet.
+        muss niemand deswegen automatisch pausieren. Stattdessen erzeugt die App für die übrig gebliebenen
+        Spieler ein <strong>Auffüllspiel</strong>: die fehlenden Plätze werden mit Freiwilligen besetzt, die
+        in dieser Runde bereits ein reguläres Spiel haben und sich noch ein zweites Mal beteiligen.
+      </p>
+
+      <h3>Auffüller manuell auswählen</h3>
+      <p>
+        Wer konkret als Freiwillige/r einspringt, wird <strong>nicht automatisch</strong> von der App
+        bestimmt. Ein Auffüllspiel entsteht zunächst mit offenen Plätzen (Anzeige „– offen –"). Auf der
+        Spielkarte erscheint pro offenem Platz ein Auswahlfeld <strong>„Auffüller/in wählen"</strong>
+        (bereits nach passendem Geschlecht – Dame oder Herr – gefiltert) mit einem Button
+        <span class="badge">Zuweisen</span>. Erst wenn <strong>alle</strong> offenen Plätze besetzt sind,
+        erscheinen <span class="badge">Spiel starten</span> sowie die Ergebnis-Eingabe für dieses Spiel.
       </p>
       <p>
-        Dort kann für sie ein zusätzliches <strong>Auffüllspiel</strong> angesetzt werden: die pausierenden
-        Spieler sind in den Auswahlfeldern (Team A / Team B) bereits vorausgewählt, freie Plätze können
-        manuell mit beliebigen anderen Teilnehmern aufgefüllt werden.
+        Eine bereits zugewiesene Person kann vor der Ergebnis-Eingabe jederzeit über den Button
+        <span class="badge">Ändern</span> gegen eine andere aktive Person getauscht werden – z.B. wenn sich
+        doch jemand anderes freiwillig melden möchte.
       </p>
+
+      <h3>Wenn wirklich niemand einspringen kann</h3>
+      <p>
+        Nur wenn es rechnerisch überhaupt keine passende Person mehr geben kann (z.B. weil insgesamt zu
+        wenige Damen bzw. Herren am Turnier teilnehmen), pausieren die übrigen Spieler tatsächlich. Sie
+        werden dann in der Vorrunden-Ansicht im Bereich <strong>„Pausierende Spieler"</strong> namentlich
+        aufgelistet. Dort lässt sich über den Button <strong>„Auffüllspiel ansetzen"</strong> zusätzlich von
+        Hand ein komplettes Spiel zusammenstellen: Team A und Team B werden dabei vollständig manuell aus
+        allen Teilnehmern gewählt.
+      </p>
+
       <div class="hinweis">
         <strong>Wertungsregel:</strong> Hat ein Spieler in derselben Runde zwei Ergebnisse (sein reguläres
         Spiel <em>und</em> das Auffüllspiel), zählt für die Rangliste automatisch nur das <strong>bessere</strong>
