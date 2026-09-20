@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Speck-weg-Turnier – Dokumentation</title>
+<style>
+  :root {
+    --color-primary: #2f6f4e;
+    --color-primary-dark: #235539;
+    --color-accent: #b3272d;
+    --color-gold: #c89b3c;
+    --color-gold-bg: #fbf1dd;
+    --color-gold-text: #6b4a17;
+    --color-background: #faf7f2;
+    --color-card: #ffffff;
+    --color-foreground: #2a2622;
+    --color-muted-foreground: #6b6259;
+    --color-border: #e5dcce;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--color-background);
+    color: var(--color-foreground);
+    line-height: 1.55;
+  }
+
+  .layout {
+    display: flex;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  nav {
+    flex: 0 0 240px;
+    padding: 32px 16px;
+    position: sticky;
+    top: 0;
+    align-self: flex-start;
+    height: 100vh;
+    overflow-y: auto;
+  }
+
+  nav h2 {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-muted-foreground);
+    margin: 0 0 12px;
+  }
+
+  nav ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  nav li a {
+    display: block;
+    padding: 6px 10px;
+    border-radius: 8px;
+    color: var(--color-foreground);
+    text-decoration: none;
+    font-size: 0.92rem;
+  }
+
+  nav li a:hover {
+    background: var(--color-gold-bg);
+    color: var(--color-gold-text);
+  }
+
+  main {
+    flex: 1;
+    padding: 40px 32px 80px;
+    min-width: 0;
+  }
+
+  header.title {
+    margin-bottom: 32px;
+  }
+
+  header.title h1 {
+    font-size: 2rem;
+    margin: 0 0 8px;
+    color: var(--color-primary-dark);
+  }
+
+  header.title p {
+    color: var(--color-muted-foreground);
+    margin: 0;
+  }
+
+  section {
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    padding: 24px 28px;
+    margin-bottom: 24px;
+  }
+
+  section h2 {
+    margin-top: 0;
+    color: var(--color-primary-dark);
+    border-bottom: 2px solid var(--color-gold-bg);
+    padding-bottom: 8px;
+  }
+
+  section h3 {
+    color: var(--color-foreground);
+    margin-bottom: 6px;
+  }
+
+  code, .taste {
+    background: var(--color-gold-bg);
+    color: var(--color-gold-text);
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-size: 0.9em;
+    font-family: "SFMono-Regular", Consolas, monospace;
+  }
+
+  .hinweis {
+    background: var(--color-gold-bg);
+    border: 1px solid var(--color-gold);
+    color: var(--color-gold-text);
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin: 12px 0;
+  }
+
+  .schritte {
+    padding-left: 20px;
+  }
+
+  .schritte li {
+    margin-bottom: 8px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+  }
+
+  th, td {
+    text-align: left;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--color-border);
+    font-size: 0.92rem;
+  }
+
+  th {
+    color: var(--color-muted-foreground);
+    font-weight: 600;
+  }
+
+  .badge {
+    display: inline-block;
+    background: var(--color-gold);
+    color: #fff;
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+
+  footer {
+    text-align: center;
+    color: var(--color-muted-foreground);
+    font-size: 0.85rem;
+    padding: 24px;
+  }
+
+  @media (max-width: 800px) {
+    .layout { flex-direction: column; }
+    nav { position: static; height: auto; flex: none; padding: 20px 16px 0; }
+    main { padding: 20px 16px 60px; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+  <nav>
+    <h2>Inhalt</h2>
+    <ul>
+      <li><a href="#ueberblick">Überblick</a></li>
+      <li><a href="#installation">Installation &amp; Offline-Nutzung</a></li>
+      <li><a href="#teilnehmer">Teilnehmer verwalten</a></li>
+      <li><a href="#einstellungen">Einstellungen</a></li>
+      <li><a href="#vorrunde">Vorrunde</a></li>
+      <li><a href="#auffuellspiele">Auffüllspiele</a></li>
+      <li><a href="#ko">KO-Runde</a></li>
+      <li><a href="#ergebnis">Ergebnis &amp; Export</a></li>
+      <li><a href="#reset">Turnier zurücksetzen</a></li>
+      <li><a href="#technik">Technische Hinweise</a></li>
+    </ul>
+  </nav>
+
+  <main>
+    <header class="title">
+      <h1>Speck-weg-Turnier – Dokumentation</h1>
+      <p>Bedienungsanleitung für die Turnier-App des BSV-Kisdorf Badminton</p>
+    </header>
+
+    <section id="ueberblick">
+      <h2>Überblick</h2>
+      <p>
+        Diese App führt komplett offline durch das Speck-weg-Turnier: von der Teilnehmerliste über die
+        Vorrunde mit Auslosung bis zur KO-Runde und dem Endergebnis. Alle Daten werden direkt auf dem
+        iPad gespeichert (keine Internetverbindung während des Turniers nötig), sodass bei einem Absturz
+        oder Stromausfall nichts verloren geht.
+      </p>
+      <p>Die App gliedert sich in fünf Bereiche, erreichbar über die Navigation oben:</p>
+      <table>
+        <thead><tr><th>Bereich</th><th>Zweck</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Teilnehmer</strong></td><td>Teilnehmerliste anlegen, importieren, bearbeiten</td></tr>
+          <tr><td><strong>Einstellungen</strong></td><td>Turnier-Modus, Anzahl Vorrunden, Anzahl Felder, Reset</td></tr>
+          <tr><td><strong>Vorrunde</strong></td><td>Auslosung, Ergebnisse eintragen, laufende Rangliste</td></tr>
+          <tr><td><strong>KO-Runde</strong></td><td>Endrunden-Baum bis zum Finale und Spiel um Platz 3</td></tr>
+          <tr><td><strong>Ergebnis</strong></td><td>Rangliste je Runde, Endergebnisse, PDF-/Excel-Export</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="installation">
+      <h2>Installation &amp; Offline-Nutzung</h2>
+      <ol class="schritte">
+        <li>Auf dem iPad im Browser <strong>Safari</strong> die Adresse der App einmal öffnen (dabei kurz Internet nötig).</li>
+        <li>Über das Teilen-Symbol <strong>„Zum Home-Bildschirm"</strong> wählen. Die App erscheint dann wie eine normale App auf dem iPad.</li>
+        <li>Ab jetzt funktioniert die App auch <strong>ganz ohne Internet</strong> – alle Dateien wurden beim ersten Aufruf lokal gespeichert (sogenannter „Service Worker"-Cache).</li>
+      </ol>
+      <div class="hinweis">
+        <strong>Wichtig:</strong> Alle Turnierdaten (Teilnehmer, Spiele, Ergebnisse) liegen ausschließlich lokal
+        im Browser-Speicher des iPads (IndexedDB). Sie werden nirgendwo hochgeladen. Bitte immer dasselbe
+        iPad und denselben Browser für das gesamte Turnier verwenden.
+      </div>
+    </section>
+
+    <section id="teilnehmer">
+      <h2>Teilnehmer verwalten</h2>
+      <h3>Excel-Import</h3>
+      <p>
+        Im Bereich „Teilnehmer" kann oben eine Excel-Datei (<code>.xlsx</code>/<code>.xls</code>) hochgeladen werden.
+        Die Datei muss folgende Spalten enthalten:
+      </p>
+      <table>
+        <thead><tr><th>Spalte</th><th>Inhalt</th></tr></thead>
+        <tbody>
+          <tr><td>Name</td><td>Vor- und Nachname des Teilnehmers</td></tr>
+          <tr><td>Geschlecht</td><td>Dame / Herr (bei Unklarheit vor dem Import manuell wählbar)</td></tr>
+          <tr><td>Verein</td><td>Vereinsname (optional)</td></tr>
+        </tbody>
+      </table>
+      <p>Vor dem endgültigen Import wird eine Vorschau angezeigt, in der jede Zeile geprüft und bei Bedarf korrigiert werden kann.</p>
+
+      <h3>Manuelle Verwaltung</h3>
+      <p>
+        Zusätzlich können jederzeit einzelne Teilnehmer manuell angelegt, bearbeitet oder gelöscht werden.
+        Jeder Teilnehmer bekommt automatisch eine <strong>eindeutige, fortlaufende Nummer</strong> (beginnend bei 1),
+        die ihn während des gesamten Turniers identifiziert – auch bei Auslosung, Ergebnissen und im Export.
+      </p>
+      <p>Über der Teilnehmertabelle wird laufend die Anzahl der Damen und Herren sowie die Gesamtzahl angezeigt.</p>
+    </section>
+
+    <section id="einstellungen">
+      <h2>Einstellungen</h2>
+      <h3>Modus: Mix oder Doppel</h3>
+      <p>
+        Die App zeigt anhand der aktiven Damen-/Herren-Anzahl eine Empfehlung an, ob ein <strong>Mix-Turnier</strong>
+        (1 Dame + 1 Herr pro Team) oder ein reines <strong>Doppel-Turnier</strong> (2 Damen oder 2 Herren pro Team)
+        besser passt – abhängig davon, wie viele Spieler pro Runde sonst pausieren müssten.
+      </p>
+      <h3>Anzahl Vorrunden</h3>
+      <p>Legt fest, wie viele Vorrunden insgesamt gespielt werden, bevor die KO-Runde beginnt.</p>
+      <h3>Anzahl Felder</h3>
+      <p>
+        Legt fest, wie viele Spielfelder gleichzeitig genutzt werden können. Diese Einstellung kann –
+        anders als Modus und Vorrundenzahl – auch nach Turnierstart jederzeit angepasst werden, falls z.B.
+        ein Feld kurzfristig ausfällt.
+      </p>
+      <div class="hinweis">
+        Modus und Anzahl Vorrunden können nur <strong>vor</strong> dem Start der Vorrunde geändert werden,
+        da sie die Auslosung direkt beeinflussen.
+      </div>
+      <h3>Turnier zurücksetzen</h3>
+      <p>Siehe Abschnitt <a href="#reset">„Turnier zurücksetzen"</a> weiter unten.</p>
+    </section>
+
+    <section id="vorrunde">
+      <h2>Vorrunde</h2>
+      <h3>Auslosung</h3>
+      <p>
+        Mit „Vorrunde starten" wird die erste Runde ausgelost. Dabei gilt: zwei Spieler dürfen innerhalb
+        der Vorrunde <strong>nie zweimal Team-Partner</strong> sein. Gegner-Wiederholungen werden möglichst
+        vermieden, sind aber – wenn keine andere gültige Auslosung mehr möglich ist – als letzter Ausweg erlaubt.
+        Nach jeder abgeschlossenen Runde wird für die nächste Runde neu ausgelost.
+      </p>
+      <p>
+        Reicht die Teilnehmerzahl nicht für ein vollständiges letztes Spiel, wird dieses automatisch mit
+        bereits spielenden Personen aufgefüllt (siehe <a href="#auffuellspiele">Auffüllspiele</a>).
+      </p>
+
+      <h3>Spielnummer &amp; Feld</h3>
+      <p>
+        Jedes Spiel im gesamten Turnier bekommt eine <strong>fortlaufende Spielnummer</strong> (beginnend bei 1) –
+        sichtbar oben auf jeder Spielkarte, sowie später im Export.
+      </p>
+      <p>
+        Bevor ein Ergebnis eingetragen werden kann, muss zuerst <span class="badge">Spiel starten</span> gedrückt
+        werden. Die App schlägt dabei automatisch das kleinste freie Feld vor und weist es dem Spiel zu.
+        Sind alle Felder belegt, ist der Button ausgegraut. Sobald das Ergebnis gespeichert wird, gilt das
+        Spiel als abgeschlossen und die Feld-Anzeige verschwindet automatisch – das Feld ist dann sofort für
+        das nächste Spiel wieder frei. So sieht man auf einen Blick, welche Felder gerade aktiv bespielt werden.
+      </p>
+
+      <h3>Ergebnis eintragen</h3>
+      <p>
+        In der Vorrunde werden pro Spiel <strong>zwei Sätze</strong> gespielt. Für jeden gewonnenen Satz gibt
+        es einen Punkt, für einen verlorenen Satz null Punkte. Zusätzlich werden die erspielten Einzelpunkte
+        je Satz gespeichert. Bei Punktgleichstand nach Sätzen entscheidet die Einzelpunkte-Differenz über die
+        Platzierung in der Rangliste.
+      </p>
+
+      <h3>Rangliste</h3>
+      <p>Unten in der Vorrunden-Ansicht wird laufend die aktuelle Rangliste angezeigt (Sätze, Punkte, gespielte Runden).</p>
+    </section>
+
+    <section id="auffuellspiele">
+      <h2>Auffüllspiele für pausierende Spieler</h2>
+      <p>
+        Reicht die Teilnehmerzahl (z.B. wegen ungerader Damen-/Herren-Verteilung) nicht für volle Teams,
+        müssen manche Spieler eine Runde pausieren. Diese werden in der Vorrunden-Ansicht im Bereich
+        <strong>„Pausierende Spieler"</strong> namentlich aufgelistet.
+      </p>
+      <p>
+        Dort kann für sie ein zusätzliches <strong>Auffüllspiel</strong> angesetzt werden: die pausierenden
+        Spieler sind in den Auswahlfeldern (Team A / Team B) bereits vorausgewählt, freie Plätze können
+        manuell mit beliebigen anderen Teilnehmern aufgefüllt werden.
+      </p>
+      <div class="hinweis">
+        <strong>Wertungsregel:</strong> Hat ein Spieler in derselben Runde zwei Ergebnisse (sein reguläres
+        Spiel <em>und</em> das Auffüllspiel), zählt für die Rangliste automatisch nur das <strong>bessere</strong>
+        der beiden Ergebnisse. Das schlechtere wird verworfen – ein Auffüllspiel kann also nur helfen, nie schaden.
+      </div>
+    </section>
+
+    <section id="ko">
+      <h2>KO-Runde</h2>
+      <p>
+        Sobald alle Vorrunden gespielt sind, wechselt die App automatisch in den KO-Modus. Aus den besten
+        Spielern (nach Vorrunden-Rangliste) wird ein KO-Baum gebildet – bei Doppel getrennt nach Damen und
+        Herren, bei Mix ein gemeinsamer Baum mit gültigen Mix-Teams.
+      </p>
+      <ul class="schritte">
+        <li>Gewinner eines Spiels kommen eine Runde weiter.</li>
+        <li>Vor jeder neuen KO-Runde werden die Paarungen unter den verbliebenen Spielern neu ausgelost –
+          dieselben Team-Partner treten innerhalb der KO-Phase nie zweimal gegeneinander an.</li>
+        <li>Bei 1:1 nach zwei Sätzen entscheidet ein dritter Satz.</li>
+        <li>Der Baum wird bis zum Finale gespielt, zusätzlich gibt es ein Spiel um Platz 3.</li>
+      </ul>
+      <p>Spielnummer und Feld-Zuweisung funktionieren in der KO-Runde genauso wie in der Vorrunde.</p>
+    </section>
+
+    <section id="ergebnis">
+      <h2>Ergebnis &amp; Export</h2>
+      <h3>Rangliste nach Runde</h3>
+      <p>
+        Im Bereich „Ergebnis" kann über ein Dropdown-Menü eine beliebige <strong>abgeschlossene</strong> Vorrunde
+        ausgewählt werden, um die Rangliste zu diesem Zeitpunkt zu sehen (kumuliert bis einschließlich dieser Runde).
+        Ab Runde 2 wird zusätzlich angezeigt, wie sich jeder Spieler gegenüber der Vorrunde verändert hat:
+      </p>
+      <table>
+        <thead><tr><th>Anzeige</th><th>Bedeutung</th></tr></thead>
+        <tbody>
+          <tr><td>▲ grün</td><td>Aufstieg um die angegebene Anzahl Plätze</td></tr>
+          <tr><td>▼ rot</td><td>Abstieg um die angegebene Anzahl Plätze</td></tr>
+          <tr><td>▶ gelb</td><td>Gleicher Platz wie zuvor</td></tr>
+        </tbody>
+      </table>
+
+      <h3>KO-Ergebnisse</h3>
+      <p>Sobald ein KO-Baum abgeschlossen ist, erscheinen hier die Platzierungen 1 bis 4.</p>
+
+      <h3>Export</h3>
+      <p>
+        Über die Buttons „Als PDF exportieren" und „Als Excel exportieren" lässt sich der gesamte
+        Turnierstand herunterladen. Beide Exporte enthalten:
+      </p>
+      <ul class="schritte">
+        <li>die finale Vorrunden-Rangliste,</li>
+        <li>die KO-Platzierungen je Baum,</li>
+        <li>einen kompletten <strong>Spielplan</strong> mit allen Spielen (Spielnummer, Runde, Team A/B,
+          Ergebnis, Feld, Status) – sortiert nach Spielnummer.</li>
+      </ul>
+    </section>
+
+    <section id="reset">
+      <h2>Turnier zurücksetzen</h2>
+      <p>Unten in den Einstellungen gibt es zwei Reset-Möglichkeiten. Beide fragen vorher sicherheitshalber nach, da sie <strong>nicht rückgängig gemacht werden können</strong>.</p>
+      <table>
+        <thead><tr><th>Button</th><th>Was passiert</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>Turnierverlauf zurücksetzen</strong></td>
+            <td>Löscht alle Spiele, den Turnierstatus und alle Feld-Zuweisungen. Teilnehmerliste und
+              Einstellungen (Modus, Vorrundenzahl, Anzahl Felder) bleiben erhalten.</td>
+          </tr>
+          <tr>
+            <td><strong>Wirklich alles zurücksetzen</strong></td>
+            <td>Löscht zusätzlich auch die komplette Teilnehmerliste und alle Einstellungen. Die App ist
+              danach leer wie bei der Erstinstallation. Die Teilnehmer-Nummerierung beginnt beim nächsten
+              neu angelegten Teilnehmer wieder bei 1.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="technik">
+      <h2>Technische Hinweise</h2>
+      <ul class="schritte">
+        <li><strong>Datenspeicherung:</strong> Alle Daten liegen in der IndexedDB des Browsers (lokal auf
+          dem Gerät, keine Cloud, kein Server).</li>
+        <li><strong>Offline-Betrieb:</strong> Ein Service Worker (<code>sw.js</code>) speichert alle
+          App-Dateien beim ersten Online-Aufruf lokal zwischen.</li>
+        <li><strong>Update nach Code-Änderungen:</strong> Wird die App nach dem Turnier weiterentwickelt,
+          muss in <code>sw.js</code> die <code>CACHE_NAME</code>-Version hochgezählt werden (z.B. „v2" → „v3"),
+          damit das iPad beim nächsten Online-Moment die neue Version übernimmt.</li>
+        <li><strong>Kein Datenabgleich zwischen Geräten:</strong> Die App läuft bewusst offline und
+          geräte-lokal. Für ein Turnier bitte durchgehend dasselbe iPad verwenden.</li>
+      </ul>
+    </section>
+
+    <footer>
+      Speck-weg-Turnier App · BSV-Kisdorf Badminton
+    </footer>
+  </main>
+</div>
+</body>
+</html>
