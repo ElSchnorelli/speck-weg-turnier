@@ -164,90 +164,72 @@ export function groupTeamsIntoMatches(teams, opponentPairs, attempts = 200) {
   return best;
 }
 
-// Wählt `count` verschiedene, noch nicht ausgeschlossene Personen zufällig
-// aus einem Pool (z.B. um Freiwillige für ein Auffüllspiel zu finden).
-function pickVolunteers(pool, excludeIds, count) {
-  const excludeSet = new Set(excludeIds);
-  const candidates = shuffle(pool.filter((id) => !excludeSet.has(id)));
-  return candidates.slice(0, count);
-}
-
 // Baut EIN Auffüllspiel innerhalb einer Geschlechtsgruppe (Doppel): restIds
-// (1-3 Personen ohne eigenes Spiel) werden mit Freiwilligen aus dem Pool der
-// bereits verplanten Spieler zu einem vollen Spiel (4 Personen, 2 Teams)
-// ergänzt. Gibt null zurück, wenn nicht genug Freiwillige verfügbar sind.
-function buildAuffuellMatch(restIds, volunteerPool, forbiddenPairs, attempts = 30) {
-  const needed = 4 - restIds.length;
-  if (needed <= 0 || needed > volunteerPool.length) return null;
+// (leftoverPair und/oder oddOne, zusammen 1-3 Personen ohne eigenes Spiel)
+// werden in ein Spiel gesetzt. Die fehlenden Plätze bleiben absichtlich OFFEN
+// (null) - der Trainer wählt die Auffüller-Person(en) danach manuell per
+// Dropdown aus (siehe fillSlots). Gibt null zurück, wenn es rein rechnerisch
+// gar keine Person mehr geben kann, die auffüllen könnte (zu wenige
+// Teilnehmer/innen dieses Geschlechts insgesamt).
+function buildAuffuellMatch(leftoverPair, oddOne, gender, totalGenderCount) {
+  const restCount = (leftoverPair ? 2 : 0) + (oddOne != null ? 1 : 0);
+  if (restCount === 0) return null;
 
-  for (let i = 0; i < attempts; i++) {
-    const volunteers = pickVolunteers(volunteerPool, restIds, needed);
-    if (volunteers.length < needed) return null;
-    const group = [...restIds, ...volunteers];
-    const teams = withinGroupMatch(group, forbiddenPairs);
-    if (teams && teams.length === 2) {
-      return { teamA: teams[0], teamB: teams[1], fillParticipantIds: volunteers };
-    }
+  const needed = 4 - restCount;
+  const possibleVolunteers = totalGenderCount - restCount;
+  if (possibleVolunteers < needed) return null;
+
+  let teamA;
+  let teamB;
+  if (leftoverPair) {
+    teamA = [leftoverPair[0], leftoverPair[1]];
+    teamB = oddOne != null ? [oddOne, null] : [null, null];
+  } else {
+    teamA = [oddOne, null];
+    teamB = [null, null];
   }
 
-  // Fallback: lieber ein wiederholtes Team-Paar als gar kein Spiel.
-  const volunteers = pickVolunteers(volunteerPool, restIds, needed);
-  if (volunteers.length < needed) return null;
-  const group = shuffle([...restIds, ...volunteers]);
-  return {
-    teamA: [group[0], group[1]],
-    teamB: [group[2], group[3]],
-    fillParticipantIds: volunteers,
-  };
+  const fillSlots = [];
+  for (const team of ['A', 'B']) {
+    const arr = team === 'A' ? teamA : teamB;
+    arr.forEach((value, index) => {
+      if (value === null) fillSlots.push({ team, index, gender });
+    });
+  }
+
+  return { teamA, teamB, fillSlots };
 }
 
 // Wie buildAuffuellMatch, aber für Mix: das übrig gebliebene Team
 // (leftoverTeam = [Dame, Herr]) ist schon vollständig - es fehlt nur noch
-// ein zweites, komplett geliehenes Mix-Team als Gegner.
-function buildMixAuffuellMatch(leftoverTeam, womenPlaying, menPlaying, forbiddenPairs, attempts = 30) {
+// ein zweites Mix-Team als Gegner. Beide Plätze bleiben offen, damit der
+// Trainer Dame und Herr manuell zuweisen kann.
+function buildMixAuffuellMatch(leftoverTeam, womenPlaying, menPlaying) {
   const [leftWoman, leftMan] = leftoverTeam;
-  const womenPool = womenPlaying.filter((id) => id !== leftWoman);
-  const menPool = menPlaying.filter((id) => id !== leftMan);
-  if (womenPool.length === 0 || menPool.length === 0) return null;
+  const womenAvailable = womenPlaying.filter((id) => id !== leftWoman).length;
+  const menAvailable = menPlaying.filter((id) => id !== leftMan).length;
+  if (womenAvailable === 0 || menAvailable === 0) return null;
 
-  for (let i = 0; i < attempts; i++) {
-    const w = shuffle(womenPool)[0];
-    const m = shuffle(menPool)[0];
-    if (!forbiddenPairs.has(pairKey(w, m))) {
-      return { teamA: leftoverTeam, teamB: [w, m], fillParticipantIds: [w, m] };
-    }
-  }
-
-  // Fallback: lieber eine wiederholte Team-Paarung als gar kein Spiel.
-  const w = shuffle(womenPool)[0];
-  const m = shuffle(menPool)[0];
-  return { teamA: leftoverTeam, teamB: [w, m], fillParticipantIds: [w, m] };
+  const teamB = [null, null];
+  const fillSlots = [
+    { team: 'B', index: 0, gender: 'W' },
+    { team: 'B', index: 1, gender: 'M' },
+  ];
+  return { teamA: leftoverTeam, teamB, fillSlots };
 }
 
 // Füllt die Damen bzw. Herren auf, die bei Mix wegen eines
 // Geschlechter-Überschusses ohne eigenes Team geblieben sind: je 2
-// Überschuss-Personen werden mit 2 geliehenen Partnern des anderen
-// Geschlechts zu einem eigenen Auffüllspiel zusammengestellt. Bleibt eine
-// einzelne Person übrig, wird für sie zusätzlich ein komplett geliehenes
-// Gegner-Team gesucht. Reichen die Freiwilligen nicht mehr aus, pausiert
-// der Rest (pausingIds).
-function fillMixExcess(excessIds, excessGender, womenPlaying, menPlaying) {
+// Überschuss-Personen bekommen ein eigenes Auffüllspiel mit 2 offenen
+// Plätzen für das andere Geschlecht. Bleibt eine einzelne Person übrig,
+// bekommt sie zusätzlich ein komplett offenes Gegner-Team. Die konkrete
+// Auffüller-Person wählt der Trainer danach manuell per Dropdown.
+function fillMixExcess(excessIds, excessGender) {
   if (excessIds.length === 0) return { matches: [], pausingIds: [] };
 
-  const opponentPool = excessGender === 'W' ? menPlaying : womenPlaying;
-  const samePool = excessGender === 'W' ? womenPlaying : menPlaying;
-  const usedVolunteers = new Set();
-
-  function takeVolunteer(pool) {
-    const available = shuffle(pool.filter((id) => !usedVolunteers.has(id)));
-    if (available.length === 0) return null;
-    usedVolunteers.add(available[0]);
-    return available[0];
-  }
-
-  function makeTeam(excessId, volunteerId) {
-    return excessGender === 'W' ? [excessId, volunteerId] : [volunteerId, excessId];
-  }
+  const opponentGender = excessGender === 'W' ? 'M' : 'W';
+  const partnerSlotIndex = excessGender === 'W' ? 1 : 0;
+  const partnerTeam = (excessId) => (excessGender === 'W' ? [excessId, null] : [null, excessId]);
 
   const matches = [];
   const remaining = [...excessIds];
@@ -255,23 +237,33 @@ function fillMixExcess(excessIds, excessGender, womenPlaying, menPlaying) {
   while (remaining.length >= 2) {
     const p1 = remaining[0];
     const p2 = remaining[1];
-    const v1 = takeVolunteer(opponentPool);
-    const v2 = takeVolunteer(opponentPool);
-    if (!v1 || !v2) break; // keine Freiwilligen mehr -> Rest pausiert
-
-    matches.push({ teamA: makeTeam(p1, v1), teamB: makeTeam(p2, v2), isFillMatch: true, fillParticipantIds: [v1, v2] });
+    matches.push({
+      teamA: partnerTeam(p1),
+      teamB: partnerTeam(p2),
+      isFillMatch: true,
+      fillSlots: [
+        { team: 'A', index: partnerSlotIndex, gender: opponentGender },
+        { team: 'B', index: partnerSlotIndex, gender: opponentGender },
+      ],
+      fillParticipantIds: [],
+    });
     remaining.splice(0, 2);
   }
 
   if (remaining.length === 1) {
     const p1 = remaining[0];
-    const v1 = takeVolunteer(opponentPool);
-    const v2 = takeVolunteer(samePool);
-    const v3 = takeVolunteer(opponentPool);
-    if (v1 && v2 && v3) {
-      matches.push({ teamA: makeTeam(p1, v1), teamB: makeTeam(v2, v3), isFillMatch: true, fillParticipantIds: [v1, v2, v3] });
-      remaining.pop();
-    }
+    matches.push({
+      teamA: partnerTeam(p1),
+      teamB: [null, null],
+      isFillMatch: true,
+      fillSlots: [
+        { team: 'A', index: partnerSlotIndex, gender: opponentGender },
+        { team: 'B', index: 0, gender: excessGender },
+        { team: 'B', index: 1, gender: opponentGender },
+      ],
+      fillParticipantIds: [],
+    });
+    remaining.pop();
   }
 
   return { matches, pausingIds: remaining };
@@ -296,20 +288,23 @@ function generateMixRound(activeParticipants, history) {
     throw new Error('Keine gültige Auslosung ohne Wiederholung der Team-Partner gefunden. Evtl. sind zu viele Vorrunden für die Teilnehmerzahl geplant.');
   }
 
-  const currentRoundTeamPairs = new Set(teamPairs.map(([a, b]) => pairKey(a, b)));
   const grouped = groupTeamsIntoMatches(teamPairs, history.opponentPairs);
   const matches = grouped
-    ? grouped.pairs.map(({ teamA, teamB }) => ({ teamA, teamB, isFillMatch: false, fillParticipantIds: [] }))
+    ? grouped.pairs.map(({ teamA, teamB }) => ({ teamA, teamB, isFillMatch: false, fillParticipantIds: [], fillSlots: [] }))
     : [];
 
-  const forbiddenForFill = new Set([...history.partnerPairs, ...currentRoundTeamPairs]);
-
-  // Übrig gebliebenes Team bei ungerader Team-Anzahl: mit einem geliehenen
-  // Mix-Team auffüllen.
+  // Übrig gebliebenes Team bei ungerader Team-Anzahl: Auffüllspiel mit
+  // offenen Plätzen für ein zweites Mix-Team (Trainer wählt manuell).
   if (grouped?.leftover) {
-    const auffuell = buildMixAuffuellMatch(grouped.leftover, womenPlaying, menPlaying, forbiddenForFill);
+    const auffuell = buildMixAuffuellMatch(grouped.leftover, womenPlaying, menPlaying);
     if (auffuell) {
-      matches.push({ teamA: auffuell.teamA, teamB: auffuell.teamB, isFillMatch: true, fillParticipantIds: auffuell.fillParticipantIds });
+      matches.push({
+        teamA: auffuell.teamA,
+        teamB: auffuell.teamB,
+        isFillMatch: true,
+        fillParticipantIds: [],
+        fillSlots: auffuell.fillSlots,
+      });
     }
   }
 
@@ -317,13 +312,13 @@ function generateMixRound(activeParticipants, history) {
   // über Auffüllspiele einbinden statt pausieren zu lassen.
   const excessIds = excessWomen.length > 0 ? excessWomen : excessMen;
   const excessGender = excessWomen.length > 0 ? 'W' : 'M';
-  const { matches: excessMatches, pausingIds } = fillMixExcess(excessIds, excessGender, womenPlaying, menPlaying);
+  const { matches: excessMatches, pausingIds } = fillMixExcess(excessIds, excessGender);
   matches.push(...excessMatches);
 
   return { matches, pausingIds };
 }
 
-function generateSameGenderGroup(ids, history) {
+function generateSameGenderGroup(ids, history, gender) {
   // Für die Team-Bildung selbst wird die größtmögliche gerade Anzahl
   // genutzt (nicht nur Vielfache von 4) - das gibt der Partner-Rotation
   // über mehrere Runden hinweg den größtmöglichen Spielraum.
@@ -341,28 +336,33 @@ function generateSameGenderGroup(ids, history) {
   if (!teams) {
     throw new Error('Keine gültige Auslosung ohne Wiederholung der Team-Partner gefunden. Evtl. sind zu viele Vorrunden für die Teilnehmerzahl geplant.');
   }
-  const currentRoundTeamPairs = new Set(teams.map(([a, b]) => pairKey(a, b)));
   const grouped = groupTeamsIntoMatches(teams, history.opponentPairs);
   if (grouped) {
-    matches.push(...grouped.pairs.map(({ teamA, teamB }) => ({ teamA, teamB, isFillMatch: false, fillParticipantIds: [] })));
+    matches.push(...grouped.pairs.map(({ teamA, teamB }) => ({ teamA, teamB, isFillMatch: false, fillParticipantIds: [], fillSlots: [] })));
   }
 
-  // Restpersonen für EIN gemeinsames Auffüllspiel sammeln: das evtl. übrig
-  // gebliebene Team (bei ungerader Team-Anzahl) UND die evtl. einzelne
-  // Person ohne Team (bei ungerader Gesamtzahl) - beides zusammen ergibt
-  // maximal 3 Personen, die mit Freiwilligen aus den regulären Spielen zu
-  // einem vollen Spiel ergänzt werden.
-  const restIds = [...(grouped?.leftover || []), ...oddOneOut];
+  // Restpersonen fürs Auffüllspiel: das evtl. übrig gebliebene Team (bei
+  // ungerader Team-Anzahl) UND die evtl. einzelne Person ohne Team (bei
+  // ungerader Gesamtzahl). Die fehlenden Plätze bleiben offen - der Trainer
+  // wählt die Auffüller-Person(en) manuell per Dropdown.
+  const leftoverPair = grouped?.leftover || null;
+  const oddOne = oddOneOut[0] ?? null;
   let pausingIds = [];
 
-  if (restIds.length > 0) {
-    const forbiddenForFill = new Set([...history.partnerPairs, ...currentRoundTeamPairs]);
-    const auffuell = buildAuffuellMatch(restIds, playing, forbiddenForFill);
+  if (leftoverPair || oddOne != null) {
+    const auffuell = buildAuffuellMatch(leftoverPair, oddOne, gender, ids.length);
     if (auffuell) {
-      matches.push({ teamA: auffuell.teamA, teamB: auffuell.teamB, isFillMatch: true, fillParticipantIds: auffuell.fillParticipantIds });
+      matches.push({
+        teamA: auffuell.teamA,
+        teamB: auffuell.teamB,
+        isFillMatch: true,
+        fillParticipantIds: [],
+        fillSlots: auffuell.fillSlots,
+      });
     } else {
-      // Zu wenige Teilnehmer insgesamt, um noch Freiwillige zu finden.
-      pausingIds = restIds;
+      // Zu wenige Teilnehmer/innen dieses Geschlechts insgesamt, um
+      // überhaupt noch jemanden zum Auffüllen finden zu können.
+      pausingIds = [...(leftoverPair || []), ...(oddOne != null ? [oddOne] : [])];
     }
   }
 
@@ -373,8 +373,8 @@ function generateDoppelRound(activeParticipants, history) {
   const women = shuffle(activeParticipants.filter((p) => p.gender === 'W').map((p) => p.id));
   const men = shuffle(activeParticipants.filter((p) => p.gender === 'M').map((p) => p.id));
 
-  const womenResult = generateSameGenderGroup(women, history);
-  const menResult = generateSameGenderGroup(men, history);
+  const womenResult = generateSameGenderGroup(women, history, 'W');
+  const menResult = generateSameGenderGroup(men, history, 'M');
 
   return {
     matches: [...womenResult.matches, ...menResult.matches],

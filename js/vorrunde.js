@@ -32,7 +32,8 @@ async function drawAndSaveRound(settings, roundNumber) {
       teamA: m.teamA,
       teamB: m.teamB,
       isFillMatch: m.isFillMatch,
-      fillParticipantIds: m.fillParticipantIds,
+      fillParticipantIds: m.fillParticipantIds || [],
+      fillSlots: m.fillSlots || [],
       feldNummer: null,
       sets: [
         { a: null, b: null },
@@ -101,6 +102,7 @@ export async function addExtraMatch(teamA, teamB) {
     teamB,
     isFillMatch: true,
     fillParticipantIds,
+    fillSlots: [],
     feldNummer: null,
     sets: [
       { a: null, b: null },
@@ -113,9 +115,33 @@ export async function addExtraMatch(teamA, teamB) {
   return match;
 }
 
-// Tauscht bei einem Auffüllspiel eine der geliehenen Personen manuell
-// gegen eine andere aus (z.B. wenn sich eine bestimmte Person lieber
-// freiwillig melden soll als die automatisch ausgeloste).
+// Weist einer noch offenen Auffüller-Position eines Auffüllspiels manuell
+// eine Person zu. Auffüllspiele werden ohne Vorauswahl erzeugt - erst durch
+// diesen Aufruf wird eine offene Position (fillSlots) besetzt.
+export async function assignFillParticipant(matchId, team, index, newId) {
+  const match = await dbGet('matches', matchId);
+  if (!match) throw new Error('Spiel nicht gefunden.');
+  if (!match.isFillMatch) throw new Error('Nur bei Auffüllspielen möglich.');
+  if (match.status === 'abgeschlossen') throw new Error('Nach Erfassung des Ergebnisses nicht mehr änderbar.');
+
+  const slotIndex = (match.fillSlots || []).findIndex((s) => s.team === team && s.index === index);
+  if (slotIndex === -1) throw new Error('Dieser Platz ist bereits vergeben.');
+
+  const allIds = [...match.teamA, ...match.teamB].filter((id) => id != null);
+  if (allIds.includes(newId)) throw new Error('Diese Person spielt in diesem Spiel bereits.');
+
+  const targetTeam = team === 'A' ? match.teamA : match.teamB;
+  targetTeam[index] = newId;
+  match.fillSlots = match.fillSlots.filter((_, i) => i !== slotIndex);
+  match.fillParticipantIds = [...(match.fillParticipantIds || []), newId];
+
+  await dbPut('matches', match);
+  return match;
+}
+
+// Tauscht bei einem Auffüllspiel eine der bereits zugewiesenen Personen
+// nachträglich gegen eine andere aus (z.B. wenn sich jemand anders
+// freiwillig melden soll als ursprünglich gewählt).
 export async function swapFillParticipant(matchId, oldId, newId) {
   const match = await dbGet('matches', matchId);
   if (!match) throw new Error('Spiel nicht gefunden.');

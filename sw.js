@@ -6,7 +6,7 @@
 // WICHTIG bei einer Code-Änderung nach dem Turnier: CACHE_NAME hochzählen
 // (z.B. "v2"), sonst bekommt das iPad die neue Version beim nächsten
 // Online-Moment nicht mit.
-const CACHE_NAME = 'speck-weg-cache-v2';
+const CACHE_NAME = 'speck-weg-cache-v3';
 
 const FILES_TO_CACHE = [
   './',

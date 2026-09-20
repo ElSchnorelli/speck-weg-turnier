@@ -8,6 +8,7 @@ import {
   isCurrentRoundComplete,
   completeRoundAndAdvance,
   addExtraMatch,
+  assignFillParticipant,
   swapFillParticipant,
 } from '../vorrunde.js';
 import { computeStandings } from '../ranking.js';
@@ -17,10 +18,17 @@ import { startMatchOnField } from '../felder.js';
 function teamLabel(teamIds, participantById) {
   return teamIds
     .map((id) => {
+      if (id == null) return '– offen –';
       const p = participantById.get(id);
       return p ? `${p.name} (${p.id})` : `#${id}`;
     })
     .join(' & ');
+}
+
+function genderLabel(gender) {
+  if (gender === 'W') return 'Dame';
+  if (gender === 'M') return 'Herr';
+  return 'Person';
 }
 
 function feldHtml(match) {
@@ -29,9 +37,39 @@ function feldHtml(match) {
   return `<button class="start-field-btn" data-match="${match.id}">Spiel starten</button>`;
 }
 
+function fillAssignHtml(match, participantById) {
+  if (!match.isFillMatch || match.status === 'abgeschlossen') return '';
+  if (!match.fillSlots || match.fillSlots.length === 0) return '';
+
+  const inMatchIds = new Set([...match.teamA, ...match.teamB].filter((id) => id != null));
+  const activeParticipants = [...participantById.values()].filter((p) => p.active);
+
+  const rows = match.fillSlots
+    .map((slot) => {
+      const options = activeParticipants
+        .filter((p) => !inMatchIds.has(p.id) && p.gender === slot.gender)
+        .map((p) => `<option value="${p.id}">${p.name} (${p.id})</option>`)
+        .join('');
+      return `
+        <label>
+          Auffüller/in wählen (${genderLabel(slot.gender)}):
+          <select class="fill-assign-select" data-match="${match.id}" data-team="${slot.team}" data-index="${slot.index}">
+            <option value="">-- bitte wählen --</option>
+            ${options}
+          </select>
+        </label>
+        <button class="fill-assign-btn" data-match="${match.id}" data-team="${slot.team}" data-index="${slot.index}" type="button">Zuweisen</button>
+      `;
+    })
+    .join('');
+
+  return `<form class="inline-form fill-swap">${rows}</form>`;
+}
+
 function fillSwapHtml(match, participantById) {
   if (!match.isFillMatch || match.status === 'abgeschlossen') return '';
   if (!match.fillParticipantIds || match.fillParticipantIds.length === 0) return '';
+  if (match.fillSlots && match.fillSlots.length > 0) return '';
 
   const inMatchIds = new Set([...match.teamA, ...match.teamB]);
   const activeParticipants = [...participantById.values()].filter((p) => p.active);
@@ -56,14 +94,27 @@ function fillSwapHtml(match, participantById) {
 }
 
 function matchCardHtml(match, participantById) {
+  const hasOpenSlots = Boolean(match.isFillMatch && match.fillSlots && match.fillSlots.length > 0);
+
   const setInput = (setIndex, side, value) =>
     `<input type="number" min="0" class="set-input" data-match="${match.id}" data-set="${setIndex}" data-side="${side}" value="${value ?? ''}" />`;
+
+  const resultSectionHtml = hasOpenSlots
+    ? '<p class="status-line">Bitte zuerst alle Auffüller-Plätze auswählen.</p>'
+    : `
+      <div class="match-sets">
+        <label>Satz 1: ${setInput(0, 'a', match.sets[0].a)} : ${setInput(0, 'b', match.sets[0].b)}</label>
+        <label>Satz 2: ${setInput(1, 'a', match.sets[1].a)} : ${setInput(1, 'b', match.sets[1].b)}</label>
+      </div>
+      <button class="save-match-btn" data-match="${match.id}" ${match.feldNummer ? '' : 'disabled'}>Ergebnis speichern</button>
+      ${match.feldNummer ? '' : '<span class="status-line">Bitte zuerst "Spiel starten" klicken.</span>'}
+    `;
 
   return `
     <div class="match-card ${match.isFillMatch ? 'fill-match' : ''}">
       <div class="match-card-header">
         <span class="match-number">Spiel Nr. ${match.matchNumber ?? '-'}</span>
-        ${feldHtml(match)}
+        ${hasOpenSlots ? '' : feldHtml(match)}
       </div>
       ${match.isFillMatch ? '<span class="badge">Auffüll-Spiel</span>' : ''}
       <div class="match-teams">
@@ -71,13 +122,9 @@ function matchCardHtml(match, participantById) {
         <span>vs.</span>
         <strong>${teamLabel(match.teamB, participantById)}</strong>
       </div>
+      ${fillAssignHtml(match, participantById)}
       ${fillSwapHtml(match, participantById)}
-      <div class="match-sets">
-        <label>Satz 1: ${setInput(0, 'a', match.sets[0].a)} : ${setInput(0, 'b', match.sets[0].b)}</label>
-        <label>Satz 2: ${setInput(1, 'a', match.sets[1].a)} : ${setInput(1, 'b', match.sets[1].b)}</label>
-      </div>
-      <button class="save-match-btn" data-match="${match.id}" ${match.feldNummer ? '' : 'disabled'}>Ergebnis speichern</button>
-      ${match.feldNummer ? '' : '<span class="status-line">Bitte zuerst "Spiel starten" klicken.</span>'}
+      ${resultSectionHtml}
       ${match.status === 'abgeschlossen' ? '<span class="status-ok">✓ erfasst</span>' : ''}
     </div>
   `;
@@ -230,6 +277,27 @@ export async function renderVorrundeView(container) {
         alert(error.message);
       }
       renderVorrundeView(container);
+    });
+  });
+
+  container.querySelectorAll('.fill-assign-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const matchId = Number(btn.dataset.match);
+      const team = btn.dataset.team;
+      const index = Number(btn.dataset.index);
+      const select = container.querySelector(
+        `.fill-assign-select[data-match="${matchId}"][data-team="${team}"][data-index="${index}"]`
+      );
+      if (!select.value) {
+        alert('Bitte zuerst eine Person auswählen.');
+        return;
+      }
+      try {
+        await assignFillParticipant(matchId, team, index, Number(select.value));
+        renderVorrundeView(container);
+      } catch (error) {
+        alert(error.message);
+      }
     });
   });
 
