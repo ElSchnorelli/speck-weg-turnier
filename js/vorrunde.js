@@ -20,8 +20,12 @@ async function drawAndSaveRound(settings, roundNumber) {
   const pastMatches = await getAllVorrundenMatches();
   const { matches, pausingIds } = generateRound(settings.mode, participants, pastMatches);
 
+  const allMatches = await dbGetAll('matches');
+  let nextMatchNumber = allMatches.reduce((max, m) => Math.max(max, m.matchNumber || 0), 0) + 1;
+
   for (const m of matches) {
     await dbPut('matches', {
+      matchNumber: nextMatchNumber++,
       phase: 'vorrunde',
       roundNumber,
       koLevel: null,
@@ -29,6 +33,7 @@ async function drawAndSaveRound(settings, roundNumber) {
       teamB: m.teamB,
       isFillMatch: m.isFillMatch,
       fillParticipantIds: m.fillParticipantIds,
+      feldNummer: null,
       sets: [
         { a: null, b: null },
         { a: null, b: null },
@@ -64,6 +69,48 @@ export async function isCurrentRoundComplete() {
   if (status.phase !== 'vorrunde') return false;
   const matches = await getRoundMatches(status.aktuelleRunde);
   return matches.length > 0 && matches.every((m) => m.status === 'abgeschlossen');
+}
+
+// Zusätzliches Spaß-Spiel für Spieler, die in der aktuellen Runde
+// pausieren. Läuft technisch wie jedes andere Vorrunden-Spiel mit; die
+// Regel "bestes von zwei Ergebnissen pro Runde zählt" greift automatisch
+// über ranking.js, weil dort nur nach roundNumber gruppiert wird.
+export async function addExtraMatch(teamA, teamB) {
+  const status = await getStatus();
+  if (status.phase !== 'vorrunde') {
+    throw new Error('Ein Spaßspiel kann nur während einer laufenden Vorrunde angesetzt werden.');
+  }
+
+  const allMatches = await dbGetAll('matches');
+  const nextMatchNumber = allMatches.reduce((max, m) => Math.max(max, m.matchNumber || 0), 0) + 1;
+
+  const roundMatches = allMatches.filter((m) => m.phase === 'vorrunde' && m.roundNumber === status.aktuelleRunde);
+  const alreadyPlayingIds = new Set();
+  roundMatches.forEach((m) => {
+    m.teamA.forEach((id) => alreadyPlayingIds.add(id));
+    m.teamB.forEach((id) => alreadyPlayingIds.add(id));
+  });
+  const fillParticipantIds = [...teamA, ...teamB].filter((id) => alreadyPlayingIds.has(id));
+
+  const match = {
+    matchNumber: nextMatchNumber,
+    phase: 'vorrunde',
+    roundNumber: status.aktuelleRunde,
+    koLevel: null,
+    teamA,
+    teamB,
+    isFillMatch: true,
+    fillParticipantIds,
+    feldNummer: null,
+    sets: [
+      { a: null, b: null },
+      { a: null, b: null },
+    ],
+    status: 'offen',
+    winner: null,
+  };
+  await dbPut('matches', match);
+  return match;
 }
 
 export async function completeRoundAndAdvance(settings) {

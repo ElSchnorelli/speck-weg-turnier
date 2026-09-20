@@ -11,6 +11,7 @@ import {
   recordKoMatchResult,
   getFinalPlacements,
 } from '../ko.js';
+import { startMatchOnField } from '../felder.js';
 
 const BRACKET_TITLES = {
   mix: 'KO-Runde (Mix)',
@@ -19,7 +20,18 @@ const BRACKET_TITLES = {
 };
 
 function teamLabel(teamIds, participantById) {
-  return teamIds.map((id) => participantById.get(id)?.name || `#${id}`).join(' & ');
+  return teamIds
+    .map((id) => {
+      const p = participantById.get(id);
+      return p ? `${p.name} (${p.id})` : `#${id}`;
+    })
+    .join(' & ');
+}
+
+function feldHtml(match) {
+  if (match.status === 'abgeschlossen') return '';
+  if (match.feldNummer) return `<span class="badge">Feld ${match.feldNummer}</span>`;
+  return `<button class="start-field-btn" data-match="${match.id}">Spiel starten</button>`;
 }
 
 function matchCardHtml(match, participantById) {
@@ -28,6 +40,10 @@ function matchCardHtml(match, participantById) {
 
   return `
     <div class="match-card ${match.isPlatz3 ? 'fill-match' : ''}">
+      <div class="match-card-header">
+        <span class="match-number">Spiel Nr. ${match.matchNumber ?? '-'}</span>
+        ${feldHtml(match)}
+      </div>
       ${match.isPlatz3 ? '<span class="badge">Spiel um Platz 3</span>' : ''}
       <div class="match-teams">
         <strong>${teamLabel(match.teamA, participantById)}</strong>
@@ -39,7 +55,8 @@ function matchCardHtml(match, participantById) {
         <label>Satz 2: ${setInput(1, 'a', match.sets[1].a)} : ${setInput(1, 'b', match.sets[1].b)}</label>
         <label>Satz 3 (nur bei 1:1 nötig): ${setInput(2, 'a', match.sets[2].a)} : ${setInput(2, 'b', match.sets[2].b)}</label>
       </div>
-      <button class="save-ko-match-btn" data-match="${match.id}">Ergebnis speichern</button>
+      <button class="save-ko-match-btn" data-match="${match.id}" ${match.feldNummer ? '' : 'disabled'}>Ergebnis speichern</button>
+      ${match.feldNummer ? '' : '<span class="status-line">Bitte zuerst "Spiel starten" klicken.</span>'}
       ${match.status === 'abgeschlossen' ? `<span class="status-ok">✓ Sieger: Team ${match.winner}</span>` : ''}
     </div>
   `;
@@ -155,6 +172,18 @@ export async function renderKoView(container) {
       });
       try {
         await recordKoMatchResult(matchId, sets);
+      } catch (error) {
+        alert(error.message);
+      }
+      renderKoView(container);
+    });
+  });
+
+  container.querySelectorAll('.start-field-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const matchId = Number(btn.dataset.match);
+      try {
+        await startMatchOnField(matchId);
       } catch (error) {
         alert(error.message);
       }

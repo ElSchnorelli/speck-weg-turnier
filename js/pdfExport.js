@@ -1,7 +1,7 @@
 // Erstellt ein PDF mit dem Endergebnis, mit Hilfe der lokal eingebundenen
 // jsPDF-Bibliothek (libs/jspdf.umd.min.js + libs/jspdf.plugin.autotable.min.js).
 
-export function exportResultsToPdf({ settings, standings, koResults }) {
+export function exportResultsToPdf({ settings, standings, koResults, spielplan }) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
   let y = 15;
@@ -40,6 +40,23 @@ export function exportResultsToPdf({ settings, standings, koResults }) {
         ['3', result.placements.platz3.join(' & ')],
         ['4', result.placements.platz4.join(' & ')],
       ],
+    });
+    y = doc.lastAutoTable.finalY + 10;
+  }
+
+  if (spielplan && spielplan.length > 0) {
+    if (y > 240) {
+      doc.addPage();
+      y = 15;
+    }
+    doc.setFontSize(13);
+    doc.text('Spielplan (alle Spiele)', 14, y);
+    y += 2;
+    doc.autoTable({
+      startY: y,
+      head: [['Nr.', 'Runde', 'Team A', 'Team B', 'Ergebnis', 'Feld', 'Status']],
+      body: spielplan.map((m) => [m.matchNumber, m.runde, m.teamA, m.teamB, m.ergebnis, m.feld, m.status]),
+      styles: { fontSize: 8 },
     });
     y = doc.lastAutoTable.finalY + 10;
   }

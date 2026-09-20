@@ -1,7 +1,7 @@
 // Erstellt eine Excel-Datei mit dem Endergebnis, mit Hilfe der lokal
 // eingebundenen SheetJS-Bibliothek (libs/xlsx.full.min.js).
 
-export function exportResultsToExcel({ standings, koResults }) {
+export function exportResultsToExcel({ standings, koResults, spielplan }) {
   const XLSX = window.XLSX;
   const workbook = XLSX.utils.book_new();
 
@@ -23,6 +23,19 @@ export function exportResultsToExcel({ standings, koResults }) {
       { Platz: 4, Team: result.placements.platz4.join(' & ') },
     ];
     XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(data), result.sheetName);
+  }
+
+  if (spielplan && spielplan.length > 0) {
+    const spielplanData = spielplan.map((m) => ({
+      Nr: m.matchNumber,
+      Runde: m.runde,
+      'Team A': m.teamA,
+      'Team B': m.teamB,
+      Ergebnis: m.ergebnis,
+      Feld: m.feld,
+      Status: m.status,
+    }));
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(spielplanData), 'Spielplan');
   }
 
   XLSX.writeFile(workbook, 'speck-weg-turnier-ergebnis.xlsx');

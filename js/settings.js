@@ -7,8 +7,8 @@ export async function getSettings() {
   return settings || null;
 }
 
-export function saveSettings({ mode, vorrundenAnzahl }) {
-  return dbPut('meta', { id: SETTINGS_ID, mode, vorrundenAnzahl });
+export function saveSettings({ mode, vorrundenAnzahl, anzahlFelder }) {
+  return dbPut('meta', { id: SETTINGS_ID, mode, vorrundenAnzahl, anzahlFelder });
 }
 
 // Zeigt konkret, wie viele Spieler pro Runde bei Mix bzw. Doppel pausieren

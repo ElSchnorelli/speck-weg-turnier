@@ -75,8 +75,12 @@ function emptySets() {
 }
 
 async function saveLevelMatches(bracket, levelIndex, label, teamPairs, isPlatz3 = false) {
+  const allMatches = await dbGetAll('matches');
+  let nextMatchNumber = allMatches.reduce((max, m) => Math.max(max, m.matchNumber || 0), 0) + 1;
+
   for (const { teamA, teamB } of teamPairs) {
     await dbPut('matches', {
+      matchNumber: nextMatchNumber++,
       phase: 'ko',
       bracket,
       roundNumber: levelIndex + 1,
@@ -86,6 +90,7 @@ async function saveLevelMatches(bracket, levelIndex, label, teamPairs, isPlatz3 
       teamB,
       isFillMatch: false,
       fillParticipantIds: [],
+      feldNummer: null,
       sets: emptySets(),
       status: 'offen',
       winner: null,

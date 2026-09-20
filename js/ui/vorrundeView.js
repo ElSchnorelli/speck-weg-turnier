@@ -7,12 +7,25 @@ import {
   recordMatchResult,
   isCurrentRoundComplete,
   completeRoundAndAdvance,
+  addExtraMatch,
 } from '../vorrunde.js';
 import { computeStandings } from '../ranking.js';
 import { renderRankingTable } from './rankingView.js';
+import { startMatchOnField } from '../felder.js';
 
 function teamLabel(teamIds, participantById) {
-  return teamIds.map((id) => participantById.get(id)?.name || `#${id}`).join(' & ');
+  return teamIds
+    .map((id) => {
+      const p = participantById.get(id);
+      return p ? `${p.name} (${p.id})` : `#${id}`;
+    })
+    .join(' & ');
+}
+
+function feldHtml(match) {
+  if (match.status === 'abgeschlossen') return '';
+  if (match.feldNummer) return `<span class="badge">Feld ${match.feldNummer}</span>`;
+  return `<button class="start-field-btn" data-match="${match.id}">Spiel starten</button>`;
 }
 
 function matchCardHtml(match, participantById) {
@@ -21,6 +34,10 @@ function matchCardHtml(match, participantById) {
 
   return `
     <div class="match-card ${match.isFillMatch ? 'fill-match' : ''}">
+      <div class="match-card-header">
+        <span class="match-number">Spiel Nr. ${match.matchNumber ?? '-'}</span>
+        ${feldHtml(match)}
+      </div>
       ${match.isFillMatch ? '<span class="badge">Auffüll-Spiel</span>' : ''}
       <div class="match-teams">
         <strong>${teamLabel(match.teamA, participantById)}</strong>
@@ -31,9 +48,50 @@ function matchCardHtml(match, participantById) {
         <label>Satz 1: ${setInput(0, 'a', match.sets[0].a)} : ${setInput(0, 'b', match.sets[0].b)}</label>
         <label>Satz 2: ${setInput(1, 'a', match.sets[1].a)} : ${setInput(1, 'b', match.sets[1].b)}</label>
       </div>
-      <button class="save-match-btn" data-match="${match.id}">Ergebnis speichern</button>
+      <button class="save-match-btn" data-match="${match.id}" ${match.feldNummer ? '' : 'disabled'}>Ergebnis speichern</button>
+      ${match.feldNummer ? '' : '<span class="status-line">Bitte zuerst "Spiel starten" klicken.</span>'}
       ${match.status === 'abgeschlossen' ? '<span class="status-ok">✓ erfasst</span>' : ''}
     </div>
+  `;
+}
+
+function extraMatchSectionHtml(pausingParticipants, activeParticipants) {
+  if (pausingParticipants.length === 0) return '';
+
+  const pausingIds = new Set(pausingParticipants.map((p) => p.id));
+  const defaults = [0, 1, 2, 3].map((i) => pausingParticipants[i]?.id ?? '');
+
+  const optionsHtml = (selectedId) => {
+    const blank = `<option value="" ${selectedId ? '' : 'selected'}>-- bitte wählen --</option>`;
+    const items = activeParticipants
+      .map(
+        (p) =>
+          `<option value="${p.id}" ${String(p.id) === String(selectedId) ? 'selected' : ''}>${p.name} (${p.id})${pausingIds.has(p.id) ? ' (pausiert)' : ''}</option>`
+      )
+      .join('');
+    return blank + items;
+  };
+
+  return `
+    <section class="card">
+      <h2>Pausierende Spieler</h2>
+      <p>Diese Runde pausieren: <strong>${pausingParticipants.map((p) => p.name).join(', ')}</strong></p>
+      <p class="status-line">Du kannst für sie ein zusätzliches Auffüllspiel ansetzen. Freie Plätze kannst du manuell mit anderen Teilnehmern auffüllen - für die zählt dann nur ihr besseres Ergebnis dieser Runde.</p>
+      <form id="extra-match-form" class="inline-form extra-match-form">
+        <div class="team-row">
+          <span class="team-row-label">Team A:</span>
+          <select data-slot="0">${optionsHtml(defaults[0])}</select>
+          <select data-slot="1">${optionsHtml(defaults[1])}</select>
+        </div>
+        <div class="team-row">
+          <span class="team-row-label">Team B:</span>
+          <select data-slot="2">${optionsHtml(defaults[2])}</select>
+          <select data-slot="3">${optionsHtml(defaults[3])}</select>
+        </div>
+        <button type="submit">Auffüllspiel ansetzen</button>
+      </form>
+      <p id="extra-match-error" class="warning-box" style="display:none;"></p>
+    </section>
   `;
 }
 
@@ -80,6 +138,14 @@ export async function renderVorrundeView(container) {
     const roundMatches = allMatches.filter((m) => m.roundNumber === status.aktuelleRunde);
     const roundComplete = await isCurrentRoundComplete();
 
+    const roundPlayingIds = new Set();
+    roundMatches.forEach((m) => {
+      m.teamA.forEach((id) => roundPlayingIds.add(id));
+      m.teamB.forEach((id) => roundPlayingIds.add(id));
+    });
+    const pausingParticipants = participants.filter((p) => p.active && !roundPlayingIds.has(p.id));
+    const activeSorted = participants.filter((p) => p.active).slice().sort((a, b) => a.name.localeCompare(b.name, 'de'));
+
     roundSectionHtml = `
       <section class="card">
         <h2>Runde ${status.aktuelleRunde} von ${settings.vorrundenAnzahl}</h2>
@@ -90,6 +156,7 @@ export async function renderVorrundeView(container) {
         ${roundComplete ? '' : '<p class="status-line">Bitte zuerst alle Ergebnisse dieser Runde eintragen.</p>'}
         <p id="advance-error" class="warning-box" style="display:none;"></p>
       </section>
+      ${extraMatchSectionHtml(pausingParticipants, activeSorted)}
     `;
   } else if (status.phase === 'vorrunde_fertig') {
     roundSectionHtml = `
@@ -125,6 +192,49 @@ export async function renderVorrundeView(container) {
       renderVorrundeView(container);
     });
   });
+
+  container.querySelectorAll('.start-field-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const matchId = Number(btn.dataset.match);
+      try {
+        await startMatchOnField(matchId);
+      } catch (error) {
+        alert(error.message);
+      }
+      renderVorrundeView(container);
+    });
+  });
+
+  const extraForm = container.querySelector('#extra-match-form');
+  if (extraForm) {
+    extraForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const errorEl = container.querySelector('#extra-match-error');
+      errorEl.style.display = 'none';
+
+      const values = Array.from(extraForm.querySelectorAll('select[data-slot]')).map((s) => s.value);
+      if (values.some((v) => v === '')) {
+        errorEl.textContent = 'Bitte alle vier Plätze auswählen.';
+        errorEl.style.display = 'block';
+        return;
+      }
+
+      const ids = values.map(Number);
+      if (new Set(ids).size !== 4) {
+        errorEl.textContent = 'Jeder Spieler darf nur einmal ausgewählt werden.';
+        errorEl.style.display = 'block';
+        return;
+      }
+
+      try {
+        await addExtraMatch([ids[0], ids[1]], [ids[2], ids[3]]);
+        renderVorrundeView(container);
+      } catch (error) {
+        errorEl.textContent = error.message;
+        errorEl.style.display = 'block';
+      }
+    });
+  }
 
   const advanceBtn = container.querySelector('#advance-btn');
   if (advanceBtn) {

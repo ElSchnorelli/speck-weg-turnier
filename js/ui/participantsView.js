@@ -37,6 +37,7 @@ export async function renderParticipantsView(container) {
 
     <section class="card">
       <h2>Teilnehmer</h2>
+      <p id="participants-summary" class="status-line"></p>
       <table class="data-table">
         <thead>
           <tr><th>Nr.</th><th>Name</th><th>Geschlecht</th><th>Verein</th><th></th></tr>
@@ -47,12 +48,18 @@ export async function renderParticipantsView(container) {
   `;
 
   const tableBody = container.querySelector('#participants-body');
+  const summaryEl = container.querySelector('#participants-summary');
   const addForm = container.querySelector('#add-form');
   const excelInput = container.querySelector('#excel-input');
   const importPreview = container.querySelector('#import-preview');
 
   async function refreshTable() {
     const participants = await listParticipants();
+
+    const women = participants.filter((p) => p.gender === 'W').length;
+    const men = participants.filter((p) => p.gender === 'M').length;
+    summaryEl.textContent = `Damen: ${women} · Herren: ${men} · Gesamt: ${participants.length}`;
+
     tableBody.innerHTML = participants
       .map(
         (p) => `

@@ -21,10 +21,22 @@ export function renderPlacementsList(placementNames) {
   `;
 }
 
-export function renderRankingTable(standings) {
+function movementHtml(participantId, currentRank, previousRanks) {
+  const prevRank = previousRanks.get(participantId);
+  if (prevRank == null) return '–';
+
+  const diff = prevRank - currentRank;
+  if (diff > 0) return `<span class="rank-move rank-up">▲ ${diff}</span>`;
+  if (diff < 0) return `<span class="rank-move rank-down">▼ ${Math.abs(diff)}</span>`;
+  return `<span class="rank-move rank-same">▶ 0</span>`;
+}
+
+export function renderRankingTable(standings, { previousRanks } = {}) {
   if (standings.length === 0) {
     return '<p class="placeholder">Noch keine Ergebnisse vorhanden.</p>';
   }
+
+  const showMovement = Boolean(previousRanks);
 
   const rows = standings
     .map(
@@ -36,6 +48,7 @@ export function renderRankingTable(standings) {
         <td>${s.setsWon}:${s.setsLost}</td>
         <td>${s.pointsWon}:${s.pointsLost} (${s.pointsDiff >= 0 ? '+' : ''}${s.pointsDiff})</td>
         <td>${s.roundsPlayed}</td>
+        ${showMovement ? `<td>${movementHtml(s.id, index + 1, previousRanks)}</td>` : ''}
       </tr>`
     )
     .join('');
@@ -43,7 +56,7 @@ export function renderRankingTable(standings) {
   return `
     <table class="data-table">
       <thead>
-        <tr><th>Platz</th><th>Nr.</th><th>Name</th><th>Sätze</th><th>Punkte (Diff.)</th><th>Runden</th></tr>
+        <tr><th>Platz</th><th>Nr.</th><th>Name</th><th>Sätze</th><th>Punkte (Diff.)</th><th>Runden</th>${showMovement ? '<th>Bewegung</th>' : ''}</tr>
       </thead>
       <tbody>${rows}</tbody>
     </table>
